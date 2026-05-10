@@ -1,0 +1,8 @@
+Flask==3.1.0
+gunicorn==23.0.0
+paramiko==3.5.1
+requests==2.32.3
+beautifulsoup4==4.13.3
+lxml==5.3.1
+twilio==9.5.0
+plivo==4.56.0
