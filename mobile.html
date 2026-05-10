@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>NX-OS v3 — Mobile Pentest Suite</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg-primary: #05080f;
+  --bg-secondary: #0a0e1a;
+  --bg-card: rgba(15, 20, 40, 0.75);
+  --border: rgba(0, 200, 255, 0.12);
+  --border-hover: rgba(0, 200, 255, 0.35);
+  --text-primary: #e8edf5;
+  --text-secondary: #8899bb;
+  --text-muted: #4a5a7a;
+  --accent-cyan: #00d4ff;
+  --accent-blue: #3b82f6;
+  --accent-purple: #8b5cf6;
+  --accent-pink: #ec4899;
+  --accent-green: #10b981;
+  --accent-red: #ef4444;
+  --accent-orange: #f59e0b;
+  --glow-cyan: 0 0 20px rgba(0,212,255,0.15);
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Inter', -apple-system, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Animated background orbs */
+#bg-orbs {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.3;
+  animation: orbFloat 20s ease-in-out infinite;
+}
+.orb:nth-child(1) {
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, var(--accent-cyan), transparent);
+  top: -15%; left: -10%;
+  animation-delay: 0s;
+}
+.orb:nth-child(2) {
+  width: 400px; height: 400px;
+  background: radial-gradient(circle, var(--accent-purple), transparent);
+  bottom: -10%; right: -10%;
+  animation-delay: -7s;
+}
+.orb:nth-child(3) {
+  width: 300px; height: 300px;
+  background: radial-gradient(circle, var(--accent-pink), transparent);
+  top: 40%; left: 50%;
+  animation-delay: -14s;
+}
+@keyframes orbFloat {
+  0%,100% { transform: translate(0,0) scale(1); }
+  25% { transform: translate(30px,-40px) scale(1.1); }
+  50% { transform: translate(-20px,30px) scale(0.9); }
+  75% { transform: translate(40px,20px) scale(1.05); }
+}
+
+/* Header */
+#header {
+  position: relative;
+  z-index: 10;
+  padding: 16px 18px 12px;
+  background: linear-gradient(180deg, rgba(5,8,15,0.98) 60%, transparent);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+#header h1 {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+#header h1 span { color: var(--accent-cyan); }
+#header .badge {
+  font-size: 9px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+  color: #fff;
+  padding: 3px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* Navigation */
+#nav {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  gap: 4px;
+  padding: 6px 12px 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+#nav::-webkit-scrollbar { display: none; }
+.nav-btn {
+  flex-shrink: 0;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  font-family: 'Inter', sans-serif;
+}
+.nav-btn:active { transform: scale(0.95); }
+.nav-btn.active {
+  background: linear-gradient(135deg, rgba(0,212,255,0.15), rgba(59,130,246,0.1));
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+  box-shadow: var(--glow-cyan);
+}
+
+/* Main Content */
+#main {
+  position: relative;
+  z-index: 5;
+  padding: 12px 14px 100px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.panel {
+  display: none;
+  animation: fadeSlide 0.35s ease;
+}
+.panel.active { display: block; }
+
+@keyframes fadeSlide {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Cards */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-bottom: 12px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: all 0.3s ease;
+}
+.card:active { transform: scale(0.99); }
+.card-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card-title .icon { font-size: 16px; }
+
+/* Inputs */
+input, textarea, select {
+  width: 100%;
+  padding: 10px 14px;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.3s ease;
+  margin-bottom: 8px;
+}
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 0 3px rgba(0,212,255,0.1);
+}
+textarea { min-height: 70px; resize: vertical; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%238899bb'%3E%3Cpath d='M2 4l4 4 4-4'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
+
+/* Buttons */
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'Inter', sans-serif;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.btn:active { transform: scale(0.95); }
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+  color: #fff;
+  box-shadow: 0 4px 15px rgba(0,212,255,0.25);
+}
+.btn-primary:hover { box-shadow: 0 6px 25px rgba(0,212,255,0.4); }
+.btn-danger { background: linear-gradient(135deg, var(--accent-red), #dc2626); color: #fff; }
+.btn-success { background: linear-gradient(135deg, var(--accent-green), #059669); color: #fff; }
+.btn-warning { background: linear-gradient(135deg, var(--accent-orange), #d97706); color: #fff; }
+.btn-purple { background: linear-gradient(135deg, var(--accent-purple), #7c3aed); color: #fff; }
+.btn-sm { padding: 6px 12px; font-size: 11px; }
+.btn-block { width: 100%; }
+.btn-group { display: flex; gap: 6px; flex-wrap: wrap; }
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+.btn-outline:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+
+/* Output */
+.output {
+  background: rgba(0,0,0,0.5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--accent-cyan);
+  max-height: 250px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin-top: 8px;
+}
+.output::-webkit-scrollbar { width: 4px; }
+.output::-webkit-scrollbar-track { background: transparent; }
+.output::-webkit-scrollbar-thumb { background: var(--accent-cyan); border-radius: 4px; }
+
+/* Stats row */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.stat-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 8px;
+  text-align: center;
+}
+.stat-box .stat-value {
+  font-size: 22px;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.stat-box .stat-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+/* Tabs */
+.sub-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.sub-tabs::-webkit-scrollbar { display: none; }
+.sub-tab {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'Inter', sans-serif;
+}
+.sub-tab.active {
+  background: rgba(0,212,255,0.1);
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+}
+.sub-panel { display: none; }
+.sub-panel.active { display: block; }
+
+/* Live badge */
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--accent-green);
+}
+.live-dot {
+  width: 6px; height: 6px;
+  background: var(--accent-green);
+  border-radius: 50%;
+  animation: pulse-dot 1.5s infinite;
+}
+@keyframes pulse-dot {
+  0%,100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.7); }
+}
+
+/* Toast */
+#toast {
+  position: fixed;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--bg-card);
+  border: 1px solid var(--border-hover);
+  backdrop-filter: blur(20px);
+  padding: 10px 20px;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  opacity: 0;
+  transition: all 0.4s ease;
+  z-index: 1000;
+  pointer-events: none;
+  white-space: nowrap;
+  max-width: 90%;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+#toast.error { border-color: var(--accent-red); }
+#toast.success { border-color: var(--accent-green); }
+
+/* Copy btn */
+.copy-btn {
+  float: right;
+  padding: 3px 10px;
+  font-size: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'Inter', sans-serif;
+}
+.copy-btn:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+
+/* Responsive */
+@media (max-width: 480px) {
+  #header { padding: 12px 14px 10px; }
+  #header h1 { font-size: 16px; }
+  #main { padding: 10px 10px 90px; }
+  .card { padding: 12px; }
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<div id="bg-orbs"><div class="orb"></div><div class="orb"></div><div class="orb"></div></div>
+
+<div id="header">
+  <h1>NX-OS <span>v3</span></h1>
+  <span class="badge">● Live</span>
+</div>
+
+<div id="nav">
+  <button class="nav-btn active" data-panel="scan">Scan</button>
+  <button class="nav-btn" data-panel="ssh">SSH</button>
+  <button class="nav-btn" data-panel="payloads">Payloads</button>
+  <button class="nav-btn" data-panel="webshell">WebShell</button>
+  <button class="nav-btn" data-panel="vulnscan">VulnScan</button>
+  <button class="nav-btn" data-panel="phish">Phish</button>
+  <button class="nav-btn" data-panel="live">Live/Track</button>
+</div>
+
+<div id="main">
+
+<!-- ==================== SCAN ==================== -->
+<div class="panel active" id="panel-scan">
+  <div class="card">
+    <div class="card-title"><span class="icon">◈</span> Port Scanner</div>
+    <input type="text" id="scan-target" placeholder="cible (IP ou domaine)" value="127.0.0.1">
+    <input type="text" id="scan-ports" placeholder="ports (ex: 22,80,443 ou 1-1000)" value="22,80,443,8080">
+    <div class="btn-group">
+      <button class="btn btn-primary btn-sm" onclick="runScan()">🚀 Scanner</button>
+      <button class="btn btn-outline btn-sm" onclick="document.getElementById('scan-output').textContent=''">Effacer</button>
+    </div>
+    <div class="output" id="scan-output">Résultats du scan ici...</div>
+  </div>
+</div>
+
+<!-- ==================== SSH ==================== -->
+<div class="panel" id="panel-ssh">
+  <div class="sub-tabs">
+    <button class="sub-tab active" data-sub="ssh-connect">Connect</button>
+    <button class="sub-tab" data-sub="ssh-exec">Exec</button>
+    <button class="sub-tab" data-sub="ssh-privesc">PrivEsc</button>
+    <button class="sub-tab" data-sub="ssh-persist">Persist</button>
+    <button class="sub-tab" data-sub="ssh-bruteforce">Bruteforce</button>
+  </div>
+
+  <!-- Connect -->
+  <div class="sub-panel active" id="sub-ssh-connect">
+    <div class="card">
+      <div class="card-title"><span class="icon">⎔</span> Connexion SSH</div>
+      <input type="text" id="ssh-host" placeholder="Hôte">
+      <input type="text" id="ssh-port" placeholder="Port" value="22">
+      <input type="text" id="ssh-user" placeholder="Utilisateur">
+      <input type="password" id="ssh-pass" placeholder="Mot de passe">
+      <button class="btn btn-primary btn-block" onclick="sshConnect()">🔌 Connecter</button>
+      <div class="output" id="ssh-connect-output">...</div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="icon">◉</span> Sessions actives</div>
+      <div class="output" id="ssh-sessions-output">Aucune session</div>
+    </div>
+  </div>
+
+  <!-- Exec -->
+  <div class="sub-panel" id="sub-ssh-exec">
+    <div class="card">
+      <div class="card-title"><span class="icon">⌘</span> Exécution commande</div>
+      <input type="text" id="ssh-exec-id" placeholder="Session ID">
+      <input type="text" id="ssh-exec-cmd" placeholder="commande (ex: whoami; id; uname -a)">
+      <button class="btn btn-primary btn-block" onclick="sshExec()">⚡ Exécuter</button>
+      <div class="output" id="ssh-exec-output">...</div>
+    </div>
+  </div>
+
+  <!-- PrivEsc -->
+  <div class="sub-panel" id="sub-ssh-privesc">
+    <div class="card">
+      <div class="card-title"><span class="icon">⬆</span> Élévation de privilèges</div>
+      <input type="text" id="ssh-privesc-id" placeholder="Session ID">
+      <select id="ssh-privesc-method">
+        <option value="sudo">sudo -i</option>
+        <option value="su">su root</option>
+        <option value="pkexec">pkexec</option>
+        <option value="cve-2021-4034">CVE-2021-4034 (pwnkit)</option>
+        <option value="cve-2023-2640">CVE-2023-2640 (Dirty Pipe)</option>
+      </select>
+      <button class="btn btn-danger btn-block" onclick="sshPrivesc()">⬆ Élever</button>
+      <div class="output" id="ssh-privesc-output">...</div>
+    </div>
+  </div>
+
+  <!-- Persist -->
+  <div class="sub-panel" id="sub-ssh-persist">
+    <div class="card">
+      <div class="card-title"><span class="icon">♾</span> Persistance</div>
+      <input type="text" id="ssh-persist-id" placeholder="Session ID">
+      <select id="ssh-persist-type">
+        <option value="ssh-key">SSH Authorized Key</option>
+        <option value="cron">Cron Reverse Shell</option>
+        <option value="systemd">Systemd Service</option>
+        <option value="motd">MOTD Backdoor</option>
+        <option value="ld_preload">LD_PRELOAD</option>
+      </select>
+      <button class="btn btn-warning btn-block" onclick="sshPersist()">♾ Installer</button>
+      <div class="output" id="ssh-persist-output">...</div>
+    </div>
+  </div>
+
+  <!-- Bruteforce -->
+  <div class="sub-panel" id="sub-ssh-bruteforce">
+    <div class="card">
+      <div class="card-title"><span class="icon">⚔</span> Bruteforce SSH</div>
+      <input type="text" id="bf-host" placeholder="Hôte">
+      <input type="text" id="bf-port" placeholder="Port" value="22">
+      <input type="text" id="bf-user" placeholder="Utilisateur (ou wordlist URL)">
+      <input type="text" id="bf-passlist" placeholder="URL wordlist mots de passe">
+      <button class="btn btn-danger btn-block" onclick="sshBruteforce()">⚔ Lancer</button>
+      <div class="output" id="ssh-bf-output">...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== PAYLOADS ==================== -->
+<div class="panel" id="panel-payloads">
+  <div class="card">
+    <div class="card-title"><span class="icon">⚡</span> Reverse Shell Generator</div>
+    <input type="text" id="pay-lhost" placeholder="LHOST (IP du listener)">
+    <input type="text" id="pay-lport" placeholder="LPORT" value="4444">
+    <select id="pay-type">
+      <option value="bash">Bash -i</option>
+      <option value="bash_udp">Bash UDP</option>
+      <option value="python">Python3</option>
+      <option value="php">PHP</option>
+      <option value="nc">Netcat (nc -e)</option>
+      <option value="nc_mkfifo">Netcat (mkfifo)</option>
+      <option value="perl">Perl</option>
+      <option value="ruby">Ruby</option>
+      <option value="powershell">PowerShell #3</option>
+      <option value="socat">Socat</option>
+    </select>
+    <button class="btn btn-primary btn-block" onclick="genPayload()">⚡ Générer</button>
+    <div class="output" id="pay-output" style="max-height:300px;">Payload apparaît ici...</div>
+  </div>
+</div>
+
+<!-- ==================== WEBSHELL ==================== -->
+<div class="panel" id="panel-webshell">
+  <div class="card">
+    <div class="card-title"><span class="icon">◎</span> WebShell — Parameter Finder</div>
+    <input type="text" id="ws-url" placeholder="URL cible (ex: http://target.com/page.php)">
+    <button class="btn btn-primary btn-block" onclick="findParams()">🔍 Find Parameters</button>
+    <div class="output" id="ws-output">Paramètres découverts...</div>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="icon">◈</span> WebShell Exec</div>
+    <input type="text" id="ws-shell-url" placeholder="URL webshell (ex: http://target.com/shell.php?cmd=)">
+    <input type="text" id="ws-cmd" placeholder="commande">
+    <button class="btn btn-danger btn-block" onclick="execWebshell()">⚡ Exec</button>
+    <div class="output" id="ws-exec-output">...</div>
+  </div>
+</div>
+
+<!-- ==================== VULNSCAN ==================== -->
+<div class="panel" id="panel-vulnscan">
+  <div class="card">
+    <div class="card-title"><span class="icon">◈</span> Web Vulnerability Scanner</div>
+    <input type="text" id="vs-url" placeholder="URL cible (ex: http://target.com)">
+    <div class="btn-group">
+      <button class="btn btn-primary btn-sm" onclick="vulnScan('xss')">XSS</button>
+      <button class="btn btn-danger btn-sm" onclick="vulnScan('sqli')">SQLi</button>
+      <button class="btn btn-warning btn-sm" onclick="vulnScan('lfi')">LFI</button>
+      <button class="btn btn-purple btn-sm" onclick="vulnScan('crawl')">Crawl</button>
+      <button class="btn btn-success btn-sm" onclick="vulnScan('full')">Full Scan</button>
+    </div>
+    <div class="output" id="vs-output" style="max-height:300px;">Résultats du scan...</div>
+  </div>
+</div>
+
+<!-- ==================== PHISH ==================== -->
+<div class="panel" id="panel-phish">
+  <div class="sub-tabs">
+    <button class="sub-tab active" data-sub="phish-create">Create</button>
+    <button class="sub-tab" data-sub="phish-captures">Captures</button>
+    <button class="sub-tab" data-sub="phish-campaigns">Campaigns</button>
+  </div>
+
+  <div class="sub-panel active" id="sub-phish-create">
+    <div class="card">
+      <div class="card-title"><span class="icon">🎣</span> Créer une campagne</div>
+      <input type="text" id="phish-name" placeholder="Nom de la campagne">
+      <input type="text" id="phish-target" placeholder="Email cible">
+      <input type="text" id="phish-redirect" placeholder="URL de redirection (après capture)">
+      <select id="phish-template">
+        <option value="google">Google Login</option>
+        <option value="outlook">Outlook</option>
+        <option value="facebook">Facebook</option>
+        <option value="linkedin">LinkedIn</option>
+        <option value="custom">Custom</option>
+      </select>
+      <button class="btn btn-danger btn-block" onclick="createPhish()">🎣 Créer</button>
+      <div class="output" id="phish-create-output">...</div>
+    </div>
+  </div>
+
+  <div class="sub-panel" id="sub-phish-captures">
+    <div class="card">
+      <div class="card-title"><span class="icon">📋</span> Credentials capturés</div>
+      <button class="btn btn-primary btn-sm" onclick="getCaptures()">🔄 Rafraîchir</button>
+      <div class="output" id="phish-captures-output">Aucune capture</div>
+    </div>
+  </div>
+
+  <div class="sub-panel" id="sub-phish-campaigns">
+    <div class="card">
+      <div class="card-title"><span class="icon">📊</span> Campagnes</div>
+      <button class="btn btn-primary btn-sm" onclick="listCampaigns()">🔄 Rafraîchir</button>
+      <div class="output" id="phish-campaigns-output">Aucune campagne</div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== LIVE / TRACK ==================== -->
+<div class="panel" id="panel-live">
+  <div class="sub-tabs">
+    <button class="sub-tab active" data-sub="live-sms">SMS</button>
+    <button class="sub-tab" data-sub="live-calls">Calls</button>
+    <button class="sub-tab" data-sub="live-track">Tracking</button>
+    <button class="sub-tab" data-sub="live-clicks">Clicks</button>
+    <button class="sub-tab" data-sub="live-lookup">Lookup</button>
+    <button class="sub-tab" data-sub="live-send">Send SMS</button>
+  </div>
+
+  <!-- SMS -->
+  <div class="sub-panel active" id="sub-live-sms">
+    <div class="card">
+      <div class="card-title">
+        <span class="icon">✉</span> SMS Reçus
+        <span class="live-badge"><span class="live-dot"></span> LIVE</span>
+      </div>
+      <div class="output" id="sms-output" style="max-height:300px;">En attente de SMS...</div>
+    </div>
+  </div>
+
+  <!-- Calls -->
+  <div class="sub-panel" id="sub-live-calls">
+    <div class="card">
+      <div class="card-title">
+        <span class="icon">📞</span> Appels reçus
+        <span class="live-badge"><span class="live-dot"></span> LIVE</span>
+      </div>
+      <div class="output" id="calls-output" style="max-height:300px;">En attente d'appels...</div>
+    </div>
+  </div>
+
+  <!-- Tracking -->
+  <div class="sub-panel" id="sub-live-track">
+    <div class="card">
+      <div class="card-title"><span class="icon">📍</span> Générateur de lien tracking</div>
+      <input type="text" id="track-name" placeholder="Nom de la cible">
+      <button class="btn btn-primary btn-block" onclick="genTracking()">🔗 Générer</button>
+      <div class="output" id="track-output">Lien apparaît ici...</div>
+    </div>
+  </div>
+
+  <!-- Clicks -->
+  <div class="sub-panel" id="sub-live-clicks">
+    <div class="card">
+      <div class="card-title">
+        <span class="icon">👁</span> Clicks tracking
+        <span class="live-badge"><span class="live-dot"></span> LIVE</span>
+      </div>
+      <div class="output" id="clicks-output" style="max-height:300px;">En attente de clics...</div>
+    </div>
+  </div>
+
+  <!-- Lookup -->
+  <div class="sub-panel" id="sub-live-lookup">
+    <div class="card">
+      <div class="card-title"><span class="icon">🔍</span> Phone Lookup</div>
+      <input type="text" id="lookup-number" placeholder="Numéro (ex: +33612345678)">
+      <div class="btn-group">
+        <button class="btn btn-primary btn-sm" onclick="lookupVeriphone()">Veriphone</button>
+        <button class="btn btn-purple btn-sm" onclick="lookupNumlookup()">NumLookup</button>
+      </div>
+      <div class="output" id="lookup-output">Résultat du lookup...</div>
+    </div>
+  </div>
+
+  <!-- Send SMS -->
+  <div class="sub-panel" id="sub-live-send">
+    <div class="card">
+      <div class="card-title"><span class="icon">✉</span> Envoyer SMS (Textbelt)</div>
+      <input type="text" id="send-number" placeholder="Numéro destinataire">
+      <input type="text" id="send-msg" placeholder="Message">
+      <button class="btn btn-primary btn-block" onclick="sendSms()">📨 Envoyer</button>
+      <div class="output" id="send-output">...</div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<div id="toast"></div>
+
+<script>
+const API_BASE = '';
+
+function showToast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = type;
+  setTimeout(() => t.classList.add('show'), 50);
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+async function apiCall(endpoint, data, method = 'POST') {
+  try {
+    const r = await fetch(API_BASE + endpoint, {
+      method, headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(data)
+    });
+    return await r.json();
+  } catch(e) {
+    showToast('Erreur API: '+e.message, 'error');
+    return null;
+  }
+}
+
+// ===== NAVIGATION =====
+document.querySelectorAll('.nav-btn').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('.nav-btn').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    document.getElementById('panel-'+b.dataset.panel).classList.add('active');
+  });
+});
+
+document.querySelectorAll('.sub-tab').forEach(b => {
+  b.addEventListener('click', () => {
+    const parent = b.closest('.panel') || b.closest('.sub-tabs').parentElement;
+    parent.querySelectorAll('.sub-tab').forEach(x => x.classList.remove('active'));
+    parent.querySelectorAll('.sub-panel').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    document.getElementById('sub-'+b.dataset.sub).classList.add('active');
+  });
+});
+
+// ===== SCAN =====
+async function runScan() {
+  const t = document.getElementById('scan-target').value;
+  const p = document.getElementById('scan-ports').value;
+  const out = document.getElementById('scan-output');
+  out.textContent = 'Scan en cours...';
+  const r = await apiCall('/api/scan', {target: t, ports: p});
+  if(r) out.textContent = r.output || r.error || JSON.stringify(r);
+}
+
+// ===== SSH =====
+async function sshConnect() {
+  const d = {host: document.getElementById('ssh-host').value, port: parseInt(document.getElementById('ssh-port').value), user: document.getElementById('ssh-user').value, pass: document.getElementById('ssh-pass').value};
+  const out = document.getElementById('ssh-connect-output');
+  out.textContent = 'Connexion...';
+  const r = await apiCall('/api/ssh/connect', d);
+  if(r) out.textContent = r.output || r.error || JSON.stringify(r);
+  sshSessions();
+}
+
+async function sshSessions() {
+  const r = await apiCall('/api/ssh/sessions', {}, 'GET');
+  const out = document.getElementById('ssh-sessions-output');
+  if(r && r.sessions) out.textContent = r.sessions.length ? r.sessions.map((s,i)=>`[${i}] ${s.host}:${s.port} — ${s.user} (${s.status})`).join('\n') : 'Aucune session active';
+}
+
+async function sshExec() {
+  const d = {session_id: document.getElementById('ssh-exec-id').value, cmd: document.getElementById('ssh-exec-cmd').value};
+  const out = document.getElementById('ssh-exec-output');
+  out.textContent = 'Exécution...';
+  const r = await apiCall('/api/ssh/exec', d);
+  if(r) out.textContent = r.output || r.error || JSON.stringify(r);
+}
+
+async function sshPrivesc() {
+  const d = {session_id: document.getElementById('ssh-privesc-id').value, method: document.getElementById('ssh-privesc-method').value};
+  const out = document.getElementById('ssh-privesc-output');
+  out.textContent = 'Élévation...';
+  const r = await apiCall('/api/ssh/privesc', d);
+  if(r) out.textContent = r.output || r.error || JSON.stringify(r);
+}
+
+async function sshPersist() {
+  const d = {session_id: document.getElementById('ssh-persist-id').value, type: document.getElementById('ssh-persist-type').value};
+  const out = document.getElementById('ssh-persist-output');
+  out.textContent = 'Installation persistance...';
+  const r = await apiCall('/api/ssh/persist', d);
+  if(r) out.textContent = r.output || r.error || JSON.stringify(r);
+}
+
+async function sshBruteforce() {
+  const d = {host: document.getElementById('bf-host').value, port: parseInt(document.getElementById('bf-port').value), user: document.getElementById('bf-user').value, passlist: document.getElementById('bf-passlist').value};
+  const out = document.getElementById('ssh-bf-output');
+  out.textContent = 'Bruteforce en cours...';
+  const r = await apiCall('/api/ssh/bruteforce', d);
+  if(r) out.textContent = r.output || r.error || JSON.stringify(r);
+}
+
+// ===== PAYLOADS =====
+async function genPayload() {
+  const d = {lhost: document.getElementById('pay-lhost').value, lport: parseInt(document.getElementById('pay-lport').value), type: document.getElementById('pay-type').value};
+  const out = document.getElementById('pay-output');
+  out.textContent = 'Génération...';
+  const r = await apiCall('/api/payloads/generate', d);
+  if(r) out.textContent = r.payload || r.error || JSON.stringify(r);
+}
+
+// ===== WEBSHELL =====
+async function findParams() {
+  const d = {url: document.getElementById('ws-url').value};
+  const out = document.getElementById('ws-output');
+  out.textContent = 'Recherche...';
+  const r = await apiCall('/api/webshell/findparams', d);
+  if(r) out.textContent = r.output || r.error || JSON.stringify(r);
+}
+
+async function execWebshell() {
+  const d = {url: document.getElementById('ws-shell-url').value, cmd: document.getElementById('ws-cmd').value};
+  const out = document.getElementById('ws-exec-output');
+  out.textContent = 'Exécution...';
+  const r = await apiCall('/api/webshell/exec', d);
+  if(r) out.textContent = r.output || r.error || JSON.stringify(r);
+}
+
+// ===== VULNSCAN =====
+async function vulnScan(type) {
+  const d = {url: document.getElementById('vs-url').value, type};
+  const out = document.getElementById('vs-output');
+  out.textContent = `Scan ${type} en cours...`;
+  const r = await apiCall('/api/vulnscan', d);
+  if(r) out.textContent = r.output || r.error || JSON.stringify(r);
+}
+
+// ===== PHISH =====
+async function createPhish() {
+  const d = {name: document.getElementById('phish-name').value, target: document.getElementById('phish-target').value, redirect: document.getElementById('phish-redirect').value, template: document.getElementById('phish-template').value};
+  const out = document.getElementById('phish-create-output');
+  out.textContent = 'Création...';
+  const r = await apiCall('/api/phish/create', d);
+  if(r) out.textContent = r.output || r.error || JSON.stringify(r);
+}
+
+async function getCaptures() {
+  const out = document.getElementById('phish-captures-output');
+  const r = await apiCall('/api/phish/captures', {}, 'GET');
+  if(r && r.captures) out.textContent = r.captures.length ? r.captures.map(c => `[${c.campaign}] ${c.email}:${c.password} — ${c.ip} — ${c.time}`).join('\n') : 'Aucune capture';
+}
+
+async function listCampaigns() {
+  const out = document.getElementById('phish-campaigns-output');
+  const r = await apiCall('/api/phish/campaigns', {}, 'GET');
+  if(r && r.campaigns) out.textContent = r.campaigns.length ? r.campaigns.map(c => `${c.name} → ${c.target} (${c.captures} captures) — ${c.url}`).join('\n') : 'Aucune campagne';
+}
+
+// ===== LIVE / TRACK =====
+async function refreshSms() {
+  const out = document.getElementById('sms-output');
+  const r = await apiCall('/api/sms/messages', {}, 'GET');
+  if(r && r.messages) out.textContent = r.messages.length ? r.messages.map(m => `[${m.from}] ${m.body} — ${m.time}`).join('\n') : 'En attente de SMS...';
+}
+async function refreshCalls() {
+  const out = document.getElementById('calls-output');
+  const r = await apiCall('/api/call/messages', {}, 'GET');
+  if(r && r.calls) out.textContent = r.calls.length ? r.calls.map(c => `[${c.from}] ${c.status || 'Appel reçu'} — ${c.time}`).join('\n') : 'En attente d\'appels...';
+}
+async function refreshClicks() {
+  const out = document.getElementById('clicks-output');
+  const r = await apiCall('/api/tracking/clicks', {}, 'GET');
+  if(r && r.clicks) out.textContent = r.clicks.length ? r.clicks.map(c => `[${c.name}] IP: ${c.ip} | GPS: ${c.lat},${c.lon} | UA: ${c.ua} | ${c.time}`).join('\n') : 'En attente de clics...';
+}
+
+async function genTracking() {
+  const d = {name: document.getElementById('track-name').value};
+  const out = document.getElementById('track-output');
+  const r = await apiCall('/api/tracking/generate', d);
+  if(r) out.textContent = r.url || r.error || JSON.stringify(r);
+}
+
+async function lookupVeriphone() {
+  const d = {number: document.getElementById('lookup-number').value};
+  const out = document.getElementById('lookup-output');
+  out.textContent = 'Lookup...';
+  const r = await apiCall('/api/lookup/veriphone', d);
+  if(r) out.textContent = JSON.stringify(r, null, 2);
+}
+
+async function lookupNumlookup() {
+  const d = {number: document.getElementById('lookup-number').value};
+  const out = document.getElementById('lookup-output');
+  out.textContent = 'Lookup...';
+  const r = await apiCall('/api/lookup/numlookup', d);
+  if(r) out.textContent = JSON.stringify(r, null, 2);
+}
+
+async function sendSms() {
+  const d = {number: document.getElementById('send-number').value, message: document.getElementById('send-msg').value};
+  const out = document.getElementById('send-output');
+  out.textContent = 'Envoi...';
+  const r = await apiCall('/api/sms/send', d);
+  if(r) out.textContent = r.output || r.error || JSON.stringify(r);
+}
+
+// Auto-refresh intervals
+setInterval(refreshSms, 5000);
+setInterval(refreshCalls, 5000);
+setInterval(refreshClicks, 5000);
+setInterval(sshSessions, 10000);
+
+// Init
+setTimeout(() => { refreshSms(); refreshCalls(); refreshClicks(); }, 1000);
+</script>
+</body>
+</html>
